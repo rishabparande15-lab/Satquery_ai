@@ -1,15 +1,28 @@
 from functools import lru_cache
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     app_name: str = "SatQuery AI API"
+    version: str = "0.1.0"
     environment: str = "development"
     api_host: str = "127.0.0.1"
     api_port: int = 8000
-    ai_provider_api_key: str | None = None
-    search_provider_api_key: str | None = None
+
+    # Public STAC API Provider (AWS Earth Search - Sentinel-2 L2A)
+    stac_api_url: str = "https://earth-search.aws.element84.com/v1"
+    stac_collection: str = "sentinel-2-l2a"
+    stac_timeout_seconds: float = 12.0
+
+    # Geospatial analysis window constraints
+    max_analysis_window_pixels: int = 512  # Maximum dimension for real-time window read
+
+    # CORS configuration
+    cors_origins: list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+    ]
 
     model_config = SettingsConfigDict(
         env_file=".env",
