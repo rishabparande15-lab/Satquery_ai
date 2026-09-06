@@ -11,6 +11,12 @@ from .validation import (
     ScenePairValidationRequest,
     ScenePairValidationResponse,
 )
+from .vlm import (
+    VLMQueryRequest,
+    VLMEvidenceItem,
+    VLMQueryResponse,
+    VLMProviderStructuredOutput,
+)
 
 __all__ = [
     "HealthResponse",
@@ -27,4 +33,8 @@ __all__ = [
     "ImageQualityReport",
     "ScenePairValidationRequest",
     "ScenePairValidationResponse",
+    "VLMQueryRequest",
+    "VLMEvidenceItem",
+    "VLMQueryResponse",
+    "VLMProviderStructuredOutput",
 ]

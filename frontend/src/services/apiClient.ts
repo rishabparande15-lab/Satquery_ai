@@ -9,6 +9,7 @@ import {
   BackendHealth,
   InputValidationResponse,
   ScenePairValidationResponse,
+  VLMQueryResponse,
 } from '../types/satellite';
 import {
   MOCK_SCENES,
@@ -408,6 +409,78 @@ class SatelliteApiClient {
     }
 
     return await response.json();
+  }
+
+  /**
+   * Submit a natural-language question against a satellite scene to the multimodal VLM backend.
+   * Calls POST /api/vlm/ask.
+   */
+  async askVLM(
+    sceneId: string,
+    question: string,
+    includeNdviContext: boolean = true
+  ): Promise<VLMQueryResponse> {
+    if (!sceneId || !sceneId.trim()) {
+      throw new Error('A satellite scene must be selected before asking questions.');
+    }
+    if (!question || !question.trim()) {
+      throw new Error('Question cannot be empty.');
+    }
+
+    if (this.mode === 'simulated') {
+      throw new Error(
+        'VLM multimodal inference is not supported in Simulated Mode. Please switch to Live Mode and configure GEMINI_API_KEY in the backend environment.'
+      );
+    }
+
+    try {
+      const response = await apiFetch('/api/vlm/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scene_id: sceneId.trim(),
+          question: question.trim(),
+          include_ndvi_context: includeNdviContext,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const detailMsg =
+          errData?.detail?.message ||
+          (typeof errData?.detail === 'string' ? errData.detail : null);
+
+        if (response.status === 503) {
+          throw new Error(
+            detailMsg ||
+              'VLM Provider Unconfigured: GEMINI_API_KEY is not set on the backend server. Configure GEMINI_API_KEY in backend environment to enable question-answering.'
+          );
+        }
+        if (response.status === 404) {
+          throw new Error(detailMsg || `Scene '${sceneId}' was not found in the STAC catalog.`);
+        }
+        if (response.status === 422) {
+          throw new Error(
+            detailMsg || `Geospatial validation failed or unsupported sensor modality for '${sceneId}'.`
+          );
+        }
+        if (response.status === 504) {
+          throw new Error('VLM Inference Timeout: Upstream Gemini model timed out while processing.');
+        }
+        if (response.status === 502) {
+          throw new Error(
+            detailMsg || 'VLM Provider Failure: Gemini returned an error or malformed completion.'
+          );
+        }
+
+        throw new Error(detailMsg || `VLM query failed with HTTP status ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (err: unknown) {
+      console.error(`[SatQuery API] askVLM error for scene ${sceneId}:`, err instanceof Error ? err.message : err);
+      throw err;
+    }
   }
 
   /**

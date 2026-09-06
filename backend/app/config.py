@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     # Geospatial analysis window constraints
     max_analysis_window_pixels: int = 512  # Maximum dimension for real-time window read
 
+    # Multimodal Vision-Language Model (VLM) settings
+    vlm_provider: str = "gemini"
+    gemini_api_key: str | None = None
+    vlm_model: str = "gemini-2.5-flash"
+    vlm_timeout_seconds: float = 30.0
+
     # CORS configuration
     cors_origins: list[str] = [
         "http://localhost:5173",

@@ -13,6 +13,7 @@ import { SatelliteMetadataPanel } from '../results/SatelliteMetadataPanel';
 import { ValidationPanel } from '../results/ValidationPanel';
 import { AnalysisStatusPanel } from '../analysis/AnalysisStatusPanel';
 import { ResultSummaryCard } from '../analysis/ResultSummaryCard';
+import { VLMInteractionPanel } from '../analysis/VLMInteractionPanel';
 
 interface DashboardViewProps {
   scenes: SatelliteScene[];
@@ -122,7 +123,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {rightPanelTab === 'analysis' && (
-          <div className="panel-content">
+          <div className="panel-content" style={{ overflowY: 'auto' }}>
+            <VLMInteractionPanel scene={selectedScene} />
+
+            <div
+              style={{
+                margin: '16px 0 8px 0',
+                borderTop: '1px solid var(--border-subtle)',
+                padding: '12px 16px 0 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--accent-emerald)',
+                }}
+              />
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: 'var(--text-secondary)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                NDVI Raster Engine
+              </span>
+            </div>
+
             <AnalysisStatusPanel job={analysisJob} />
             <ResultSummaryCard
               result={analysisResult}

@@ -224,3 +224,28 @@ export interface ScenePairValidationResponse {
   limitations: string[];
   validated_at: string;
 }
+
+export interface VLMQueryRequest {
+  scene_id: string;
+  question: string;
+  include_ndvi_context?: boolean;
+}
+
+export interface VLMEvidenceItem {
+  feature: string;
+  observation: string;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export interface VLMQueryResponse {
+  scene_id: string;
+  question: string;
+  answer: string;
+  confidence_score: number;
+  confidence_level: 'high' | 'medium' | 'low';
+  evidence: VLMEvidenceItem[];
+  limitations: string[];
+  model_used: string;
+  latency_ms: number;
+  timestamp: string;
+}
