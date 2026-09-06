@@ -1,5 +1,6 @@
 import React from 'react';
 import { BackendHealth } from '../../types/satellite';
+import { BACKEND_BASE_URL } from '../../services/apiClient';
 
 interface SettingsViewProps {
   backendHealth: BackendHealth;
@@ -36,7 +37,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 FastAPI Backend Connectivity
               </h3>
               <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                Target Endpoint: <code>http://localhost:8000/health</code>
+                Target Endpoint: <code>{BACKEND_BASE_URL}/api/health</code>
               </p>
             </div>
 

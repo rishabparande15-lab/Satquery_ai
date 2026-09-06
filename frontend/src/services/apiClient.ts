@@ -17,7 +17,15 @@ import {
 
 const HISTORY_STORAGE_KEY = 'satquery_query_history_v1';
 const SAVED_STORAGE_KEY = 'satquery_saved_analyses_v1';
-const BACKEND_BASE_URL = 'http://localhost:8000';
+
+// Resolved from NEXT_PUBLIC_API_BASE_URL (or VITE_API_BASE_URL) for local dev and production deployments
+export const BACKEND_BASE_URL: string =
+  (typeof import.meta !== 'undefined' &&
+    import.meta.env &&
+    (import.meta.env.NEXT_PUBLIC_API_BASE_URL || import.meta.env.VITE_API_BASE_URL)) ||
+  'http://localhost:8000';
+
+
 
 /**
  * Clean service layer connecting the frontend to the FastAPI Earth observation backend,
