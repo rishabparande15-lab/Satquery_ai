@@ -1,18 +1,15 @@
 services:
   - type: web
-    name: satquery-backend
-    runtime: python
+    name: satquery-backend-xgja
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     region: oregon
     plan: free
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /api/health
+    healthCheckPath: /health
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.9
       - key: ENVIRONMENT
         value: production
       - key: API_HOST
-        value: 0.0.0.0
+        value: "0.0.0.0"
       - key: CORS_ORIGIN_REGEX
-        value: ^https://.*\.netlify\.app$
+        value: "^https://.*\\.netlify\\.app$"
