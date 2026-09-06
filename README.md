@@ -89,5 +89,45 @@ The repository is configured for zero-configuration Netlify deployment with full
 ### Environment Variables on Netlify:
 - Go to **Site Configuration** > **Environment Variables**
 - Key: `NEXT_PUBLIC_API_BASE_URL`
-- Value: Your public backend HTTPS URL (or leave blank to use the Simulated Mode until the backend is hosted).
+- Value: Your public backend HTTPS URL (e.g. `https://satquery-backend.onrender.com`).
+
+---
+
+## 🛰️ Deploying the FastAPI Backend (Free / Low Cost)
+
+The backend has been configured with production manifests (`render.yaml`, `Procfile`, `Dockerfile`, and `requirements.txt`).
+
+- **Production Entry Point**: `backend.app.main:app`
+- **Production Server Command**: `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`
+- **Health Check Endpoint**: `/api/health`
+
+### Option 1: Render (Free Web Service — Recommended)
+1. Go to [Render Dashboard](https://dashboard.render.com/) and click **New** > **Web Service**.
+2. Connect your GitHub repository: `https://github.com/rishabparande15-lab/Satquery_ai`.
+3. Configure the service:
+   - **Name**: `satquery-backend`
+   - **Region**: Oregon (or nearest)
+   - **Language**: `Python 3`
+   - **Build Command**: `pip install -r backend/requirements.txt`
+   - **Start Command**: `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`
+   - **Instance Type**: `Free`
+4. Set Environment Variables in Render:
+   - `PYTHON_VERSION`: `3.11.9`
+   - `ENVIRONMENT`: `production`
+   - `CORS_ORIGIN_REGEX`: `^https://.*\.netlify\.app$`
+5. Click **Deploy Web Service**. Once deployed, copy your Render HTTPS URL (e.g. `https://satquery-backend.onrender.com`) and paste it into Netlify's `NEXT_PUBLIC_API_BASE_URL`.
+
+### Option 2: Railway
+1. Go to [Railway Dashboard](https://railway.app/) > **New Project** > **Deploy from GitHub repo**.
+2. Select `rishabparande15-lab/Satquery_ai`.
+3. Railway automatically detects the included `Dockerfile` and `Procfile`.
+4. Generate a public domain under **Settings** > **Networking** > **Public Domain**.
+
+### Option 3: Fly.io
+```bash
+fly launch
+fly deploy
+```
+*(Uses the included `fly.toml` and `Dockerfile`)*
+
 

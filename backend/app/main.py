@@ -17,14 +17,16 @@ app = FastAPI(
     description="Earth Observation STAC discovery and real-time NDVI processing engine",
 )
 
-# CORS middleware for local frontend connectivity
+# CORS middleware for local frontend and production Netlify domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permits localhost:5173 and any dev origin
+    allow_origins=settings.cors_origins,
+    allow_origin_regex=settings.cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Register routers
 app.include_router(health_router)
