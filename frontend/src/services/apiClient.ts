@@ -18,14 +18,95 @@ import {
 const HISTORY_STORAGE_KEY = 'satquery_query_history_v1';
 const SAVED_STORAGE_KEY = 'satquery_saved_analyses_v1';
 
-// Resolved from NEXT_PUBLIC_API_BASE_URL (or VITE_API_BASE_URL) for local dev and production deployments
-export const BACKEND_BASE_URL: string =
-  (typeof import.meta !== 'undefined' &&
-    import.meta.env &&
-    (import.meta.env.NEXT_PUBLIC_API_BASE_URL || import.meta.env.VITE_API_BASE_URL)) ||
-  'http://localhost:8000';
+export const PRODUCTION_API_URL = 'https://satquery-backend-xgja.onrender.com';
+export const LOCAL_API_URL = 'http://localhost:8000';
 
+/**
+ * Resolves the backend base URL with strict production protection:
+ * 1. Checks NEXT_PUBLIC_API_BASE_URL or VITE_API_BASE_URL.
+ * 2. If running in production or loaded on any remote host (e.g. Netlify), NEVER allows localhost:8000.
+ * 3. Defaults to https://satquery-backend-xgja.onrender.com in production.
+ */
+function resolveApiBaseUrl(): string {
+  const envUrl =
+    (typeof import.meta !== 'undefined' &&
+      import.meta.env &&
+      (import.meta.env.NEXT_PUBLIC_API_BASE_URL || import.meta.env.VITE_API_BASE_URL)) ||
+    (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_BASE_URL) ||
+    '';
 
+  const isBrowser = typeof window !== 'undefined';
+  const hostname = isBrowser ? window.location.hostname : '';
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+  const isProd =
+    (typeof import.meta !== 'undefined' && Boolean(import.meta.env?.PROD)) ||
+    (!isLocalHost && isBrowser);
+
+  if (envUrl) {
+    const trimmed = envUrl.trim().replace(/\/+$/, '');
+    // In production or when hosted on Netlify, localhost is unreachable from the client browser
+    if (isProd && (trimmed.includes('localhost') || trimmed.includes('127.0.0.1'))) {
+      console.warn(
+        `[SatQuery API] Rejecting localhost URL (${trimmed}) in production context. Routing to ${PRODUCTION_API_URL}`
+      );
+      return PRODUCTION_API_URL;
+    }
+    return trimmed;
+  }
+
+  if (isProd) {
+    return PRODUCTION_API_URL;
+  }
+
+  return LOCAL_API_URL;
+}
+
+export const BACKEND_BASE_URL: string = resolveApiBaseUrl();
+console.info(`[SatQuery API] Configured Backend Base URL: ${BACKEND_BASE_URL}`);
+
+/**
+ * Instrumented fetch wrapper providing structured console telemetry:
+ * - API Base URL
+ * - Request URL and Method
+ * - HTTP Response Status
+ * - Network or Application Failure Reason
+ */
+async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  const url = `${BACKEND_BASE_URL}${endpoint}`;
+  const method = options.method || 'GET';
+  const startTime = performance.now();
+
+  console.info(`[SatQuery API] >> ${method} ${url}`, {
+    baseUrl: BACKEND_BASE_URL,
+    endpoint,
+  });
+
+  try {
+    const response = await fetch(url, options);
+    const elapsedMs = Math.round(performance.now() - startTime);
+
+    if (response.ok) {
+      console.info(
+        `[SatQuery API] << ${response.status} ${response.statusText} (${url}) [${elapsedMs}ms]`
+      );
+    } else {
+      console.warn(
+        `[SatQuery API] << HTTP Error ${response.status} ${response.statusText} (${url}) [${elapsedMs}ms]`
+      );
+    }
+    return response;
+  } catch (err: unknown) {
+    const elapsedMs = Math.round(performance.now() - startTime);
+    const failureReason = err instanceof Error ? err.message : String(err);
+    console.error(`[SatQuery API] !! Request Failed: ${method} ${url} [${elapsedMs}ms]`, {
+      baseUrl: BACKEND_BASE_URL,
+      requestUrl: url,
+      failureReason,
+      error: err,
+    });
+    throw err;
+  }
+}
 
 export type OperationalMode = 'live' | 'simulated';
 
@@ -52,18 +133,27 @@ class SatelliteApiClient {
   }
 
   /**
-   * Probes backend health and capabilities.
+   * Probes backend health and capabilities via /api/health and /health.
    */
   async checkBackendHealth(): Promise<BackendHealth> {
     const startTime = performance.now();
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-      const response = await fetch(`${BACKEND_BASE_URL}/api/health`, {
-        method: 'GET',
-        signal: controller.signal,
-      });
+      let response: Response;
+      try {
+        response = await apiFetch('/api/health', {
+          method: 'GET',
+          signal: controller.signal,
+        });
+      } catch {
+        // Retry with /health root endpoint if /api/health failed
+        response = await apiFetch('/health', {
+          method: 'GET',
+          signal: controller.signal,
+        });
+      }
 
       clearTimeout(timeoutId);
       const latencyMs = Math.round(performance.now() - startTime);
@@ -83,8 +173,9 @@ class SatelliteApiClient {
           message: 'Connected to FastAPI Backend (Live STAC & Real NDVI Ready)',
         };
       }
-    } catch {
-      // Backend not running or unreachable
+    } catch (err: unknown) {
+      const reason = err instanceof Error ? err.message : String(err);
+      console.warn(`[SatQuery API] Health check failed against ${BACKEND_BASE_URL}: ${reason}`);
     }
 
     this.isBackendOnline = false;
@@ -99,7 +190,7 @@ class SatelliteApiClient {
         providers: [],
         latencyMs: undefined,
         lastChecked: new Date().toISOString(),
-        message: `FastAPI backend is offline at ${BACKEND_BASE_URL}. Run uvicorn locally or configure NEXT_PUBLIC_API_BASE_URL.`,
+        message: `FastAPI backend is offline or starting at ${BACKEND_BASE_URL}. Ensure Render service is active or run local uvicorn.`,
       };
     }
 
@@ -140,7 +231,7 @@ class SatelliteApiClient {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-        const response = await fetch(`${BACKEND_BASE_URL}/api/search`, {
+        const response = await apiFetch('/api/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -202,6 +293,34 @@ class SatelliteApiClient {
       }
       return true;
     });
+  }
+
+  /**
+   * Retrieves specific scene metadata and available band assets via FastAPI /api/scenes/{scene_id}.
+   */
+  async getSceneById(sceneId: string): Promise<SatelliteScene | null> {
+    if (this.mode === 'simulated') {
+      return MOCK_SCENES.find((s) => s.id === sceneId) || null;
+    }
+
+    try {
+      const response = await apiFetch(`/api/scenes/${encodeURIComponent(sceneId)}`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const detailMsg =
+          errData?.detail?.message ||
+          (typeof errData?.detail === 'string' ? errData.detail : null);
+        throw new Error(detailMsg || `Failed to fetch scene ${sceneId} (HTTP ${response.status})`);
+      }
+
+      return await response.json();
+    } catch (err: unknown) {
+      console.error(`[SatQuery API] getSceneById failed for ${sceneId}:`, err);
+      throw err;
+    }
   }
 
   /**
@@ -298,7 +417,7 @@ class SatelliteApiClient {
     const startTime = performance.now();
     let data: any;
     try {
-      const response = await fetch(`${BACKEND_BASE_URL}/api/analyze`, {
+      const response = await apiFetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

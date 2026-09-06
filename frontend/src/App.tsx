@@ -102,6 +102,7 @@ export function App() {
           setHistory((prev) => [newHist, ...prev.filter((h) => h.query !== newHist.query)]);
         }
       } catch (err: unknown) {
+        setScenes([]);
         setSearchError((err as Error).message || 'Failed to search satellite catalog.');
       } finally {
         setIsSearching(false);

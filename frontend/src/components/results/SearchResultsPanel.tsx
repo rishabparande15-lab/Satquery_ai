@@ -43,7 +43,7 @@ export const SearchResultsPanel: React.FC<SearchResultsPanelProps> = ({
 
       {isLoading ? (
         <LoadingSkeleton rows={4} />
-      ) : scenes.length === 0 ? (
+      ) : error ? null : scenes.length === 0 ? (
         <EmptyState
           iconType="search"
           title="No Matching Satellite Scenes"

@@ -4,6 +4,9 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  NEXT_PUBLIC_API_BASE_URL = "https://satquery-backend-xgja.onrender.com"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
