@@ -27,12 +27,29 @@ export const BACKEND_BASE_URL: string =
 
 
 
+export type OperationalMode = 'live' | 'simulated';
+
 /**
  * Clean service layer connecting the frontend to the FastAPI Earth observation backend,
- * with graceful fallback to simulated mock datasets when offline or in demo mode.
+ * with explicit operational modes (Live vs Simulated) and strict error reporting (no silent fallbacks).
  */
 class SatelliteApiClient {
   private isBackendOnline = false;
+  private mode: OperationalMode = 'live';
+
+  /**
+   * Set operational mode ('live' or 'simulated')
+   */
+  setMode(newMode: OperationalMode) {
+    this.mode = newMode;
+  }
+
+  /**
+   * Get current operational mode
+   */
+  getMode(): OperationalMode {
+    return this.mode;
+  }
 
   /**
    * Probes backend health and capabilities.
@@ -41,7 +58,7 @@ class SatelliteApiClient {
     const startTime = performance.now();
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
 
       const response = await fetch(`${BACKEND_BASE_URL}/api/health`, {
         method: 'GET',
@@ -58,7 +75,7 @@ class SatelliteApiClient {
           status: 'connected',
           service: data.service || 'SatQuery AI API',
           version: data.version || '0.1.0',
-          activeMode: data.active_mode || 'live',
+          activeMode: this.mode,
           capabilities: data.capabilities || ['sentinel-2-l2a-search', 'bounded-window-ndvi'],
           providers: data.providers || ['earth-search-stac'],
           latencyMs,
@@ -67,32 +84,49 @@ class SatelliteApiClient {
         };
       }
     } catch {
-      // Backend not running; fallback to simulated intelligence engine
+      // Backend not running or unreachable
     }
 
     this.isBackendOnline = false;
+
+    if (this.mode === 'live') {
+      return {
+        status: 'offline',
+        service: 'FastAPI Backend (Offline)',
+        version: '0.1.0',
+        activeMode: 'live',
+        capabilities: [],
+        providers: [],
+        latencyMs: undefined,
+        lastChecked: new Date().toISOString(),
+        message: `FastAPI backend is offline at ${BACKEND_BASE_URL}. Run uvicorn locally or configure NEXT_PUBLIC_API_BASE_URL.`,
+      };
+    }
+
     return {
       status: 'simulated_fallback',
-      service: 'SatQuery Mock EO Engine v0.1',
-      version: '0.1.0-preview',
+      service: 'SatQuery Simulated Engine v0.1',
+      version: '0.1.0-simulated',
       activeMode: 'simulated',
       capabilities: ['simulated-search', 'simulated-ndvi'],
       providers: ['mock-dataset'],
-      latencyMs: 2,
+      latencyMs: 1,
       lastChecked: new Date().toISOString(),
-      message: 'Running in simulated standalone mode (Backend offline)',
+      message: 'Running in simulated standalone mode (mock datasets)',
     };
   }
 
   /**
    * Search satellite scenes using natural language or structured parameters.
+   * In LIVE mode, queries FastAPI /api/search and will NEVER silently fall back to mock data.
    */
   async searchScenes(
     filters: SearchFilterParams,
     forceMock: boolean = false
   ): Promise<SatelliteScene[]> {
-    // If backend is online and mock not forced, call live backend
-    if (this.isBackendOnline && !forceMock) {
+    const isLiveSearch = this.mode === 'live' && !forceMock;
+
+    if (isLiveSearch) {
       try {
         const payload: Record<string, unknown> = {
           query: filters.queryText || undefined,
@@ -103,14 +137,21 @@ class SatelliteApiClient {
           limit: 10,
         };
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
         const response = await fetch(`${BACKEND_BASE_URL}/api/search`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           const liveScenes: SatelliteScene[] = await response.json();
+          this.isBackendOnline = true;
           return liveScenes;
         }
 
@@ -120,22 +161,29 @@ class SatelliteApiClient {
           errData?.detail?.message ||
           (typeof errData?.detail === 'string' ? errData.detail : null);
 
-        if (response.status === 400 && detailMsg) {
-          throw new Error(detailMsg);
+        throw new Error(detailMsg || `Backend search failed with status ${response.status}`);
+      } catch (err: unknown) {
+        this.isBackendOnline = false;
+
+        // In LIVE mode: NEVER silently return mock scenes!
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const isNetworkFailure =
+          errMsg.includes('Failed to fetch') ||
+          errMsg.includes('NetworkError') ||
+          errMsg.includes('aborted') ||
+          errMsg.includes('abort');
+
+        if (isNetworkFailure) {
+          throw new Error(
+            `LIVE BACKEND UNAVAILABLE: Cannot connect to FastAPI backend at ${BACKEND_BASE_URL}. Ensure the server is running locally ('uvicorn backend.app.main:app --port 8000') or configure NEXT_PUBLIC_API_BASE_URL for a public deployment. Switch to Simulated Mode to test offline.`
+          );
         }
 
-        throw new Error(detailMsg || `Search failed with status ${response.status}`);
-      } catch (err) {
-        // If it's a 400 location error, re-throw so the UI shows the exact message
-        if (err instanceof Error && err.message.includes('not in the deterministic catalog')) {
-          throw err;
-        }
-        // If network failed, mark backend as offline and fallback
-        this.isBackendOnline = false;
+        throw err;
       }
     }
 
-    // Graceful Fallback to Curated Mock Scenes
+    // Simulated Mode: Return curated mock scenes
     await new Promise((resolve) => setTimeout(resolve, 200));
     const queryLower = filters.queryText.trim().toLowerCase();
 
@@ -157,7 +205,8 @@ class SatelliteApiClient {
   }
 
   /**
-   * Run real NDVI analysis on real scene, or simulated pipeline on mock scene.
+   * Run real NDVI analysis on real scene, or simulated pipeline in simulated mode.
+   * In LIVE mode, will NEVER silently fake results if the backend is down.
    */
   async runAnalysisPipeline(
     scene: SatelliteScene,
@@ -165,9 +214,10 @@ class SatelliteApiClient {
     onProgress: (job: AnalysisJob) => void,
     forceMock: boolean = false
   ): Promise<AnalysisResult> {
-    const isRealScene = Boolean(scene.isRealData) && this.isBackendOnline && !forceMock;
+    const isRealScene = Boolean(scene.isRealData);
+    const useRealPipeline = (this.mode === 'live' || isRealScene) && !forceMock;
 
-    if (isRealScene) {
+    if (useRealPipeline) {
       return this.runRealNDVIWorkflow(scene, query, onProgress);
     } else {
       return this.runSimulatedWorkflow(scene, query, onProgress);
@@ -246,27 +296,43 @@ class SatelliteApiClient {
 
     // Initiate real backend processing call
     const startTime = performance.now();
-    const response = await fetch(`${BACKEND_BASE_URL}/api/analyze`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        scene_id: scene.id,
-        query: query,
-        window_pixels: 256,
-      }),
-    });
+    let data: any;
+    try {
+      const response = await fetch(`${BACKEND_BASE_URL}/api/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scene_id: scene.id,
+          query: query,
+          window_pixels: 256,
+        }),
+      });
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      const msg = errData?.detail?.message || `Real NDVI processing failed (HTTP ${response.status})`;
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const msg = errData?.detail?.message || `Real NDVI processing failed (HTTP ${response.status})`;
+        currentJob.status = 'error';
+        currentJob.errorMessage = msg;
+        stages[1].status = 'failed';
+        stages[1].logMessage = msg;
+        onProgress({ ...currentJob, stages: [...stages] });
+        throw new Error(msg);
+      }
+
+      data = await response.json();
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error
+          ? err.message
+          : `Failed to connect to ${BACKEND_BASE_URL}/api/analyze`;
       currentJob.status = 'error';
-      currentJob.errorMessage = msg;
+      currentJob.errorMessage = `LIVE NDVI PROCESSING ERROR: ${errorMsg}. Real NDVI calculation requires active FastAPI backend.`;
       stages[1].status = 'failed';
+      stages[1].logMessage = errorMsg;
       onProgress({ ...currentJob, stages: [...stages] });
-      throw new Error(msg);
+      throw new Error(currentJob.errorMessage);
     }
 
-    const data = await response.json();
     const elapsedTotal = Math.round(performance.now() - startTime);
 
     stages[1].status = 'completed';

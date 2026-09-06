@@ -6,6 +6,8 @@ interface HeaderProps {
   backendHealth: BackendHealth;
   onRefreshHealth: () => void;
   onToggleMobileMenu?: () => void;
+  operationalMode: 'live' | 'simulated';
+  onToggleMode: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -13,8 +15,30 @@ export const Header: React.FC<HeaderProps> = ({
   backendHealth,
   onRefreshHealth,
   onToggleMobileMenu,
+  operationalMode,
+  onToggleMode,
 }) => {
   const isConnected = backendHealth.status === 'connected';
+  const isLive = operationalMode === 'live';
+
+  let badgeDotClass = 'cyan';
+  let badgeText = 'SIMULATED MODE (MOCK)';
+  let apiDotClass = 'cyan';
+  let apiLabel = 'MOCK';
+
+  if (isLive) {
+    if (isConnected) {
+      badgeDotClass = 'emerald';
+      badgeText = 'LIVE EO BACKEND';
+      apiDotClass = 'emerald';
+      apiLabel = 'ONLINE';
+    } else {
+      badgeDotClass = 'rose';
+      badgeText = 'LIVE MODE (OFFLINE)';
+      apiDotClass = 'rose';
+      apiLabel = 'OFFLINE';
+    }
+  }
 
   return (
     <header className="top-header" role="banner">
@@ -43,17 +67,21 @@ export const Header: React.FC<HeaderProps> = ({
           <span>SatQuery AI</span>
         </div>
 
-        <div
+        <button
           className="environment-badge"
+          onClick={onToggleMode}
           title={
-            isConnected
-              ? "Connected to local FastAPI backend with real Sentinel-2 STAC and Rasterio NDVI processing"
-              : "Backend offline. Running in scientific simulation mode with mock datasets"
+            isLive
+              ? isConnected
+                ? "Connected to live FastAPI backend. Click to switch to Simulated Mode."
+                : "Live backend unreachable! Click to switch to Simulated Mode for offline preview."
+              : "Running in offline simulated mode. Click to switch to Live Backend Mode."
           }
+          style={{ background: 'transparent', border: '1px solid var(--border-subtle)', cursor: 'pointer' }}
         >
-          <span className={`status-dot ${isConnected ? 'emerald' : 'cyan'}`} />
-          <span>{isConnected ? 'LIVE EO BACKEND' : 'SIMULATED EO ENGINE'}</span>
-        </div>
+          <span className={`status-dot ${badgeDotClass}`} />
+          <span>{badgeText}</span>
+        </button>
       </div>
 
       <div className="header-right">
@@ -79,9 +107,9 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onRefreshHealth}
             title={`${backendHealth.message} (Click to recheck)`}
           >
-            <span className={`status-dot ${isConnected ? 'emerald' : 'amber'}`} />
+            <span className={`status-dot ${apiDotClass}`} />
             <span className="label">API:</span>
-            <span className="val">{isConnected ? 'ONLINE' : 'SIMULATED'}</span>
+            <span className="val">{apiLabel}</span>
           </div>
         </div>
       </div>

@@ -47,9 +47,10 @@ export function App() {
   const [history, setHistory] = useState<QueryHistoryItem[]>([]);
   const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
 
-  // Backend Health Telemetry
+  // Backend Health Telemetry & Operational Mode
+  const [operationalMode, setOperationalMode] = useState<'live' | 'simulated'>('live');
   const [backendHealth, setBackendHealth] = useState<BackendHealth>({
-    status: 'simulated_fallback',
+    status: 'offline',
     service: 'Initializing...',
     lastChecked: new Date().toISOString(),
     message: 'Probing API...',
@@ -63,6 +64,13 @@ export function App() {
     setBackendHealth(health);
     setIsCheckingHealth(false);
   }, []);
+
+  const handleSetOperationalMode = (mode: 'live' | 'simulated') => {
+    setOperationalMode(mode);
+    apiClient.setMode(mode);
+    probeHealth();
+  };
+
 
   // Execute Catalog Search
   const executeSearch = useCallback(
@@ -218,6 +226,10 @@ export function App() {
           selectedScene={selectedScene}
           backendHealth={backendHealth}
           onRefreshHealth={probeHealth}
+          operationalMode={operationalMode}
+          onToggleMode={() =>
+            handleSetOperationalMode(operationalMode === 'live' ? 'simulated' : 'live')
+          }
         />
 
         {/* Dynamic View Display */}
@@ -275,6 +287,8 @@ export function App() {
             onRefreshHealth={probeHealth}
             isCheckingHealth={isCheckingHealth}
             onClearHistory={handleClearHistory}
+            operationalMode={operationalMode}
+            onSetOperationalMode={handleSetOperationalMode}
           />
         )}
 

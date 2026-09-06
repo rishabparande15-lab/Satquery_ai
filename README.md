@@ -55,32 +55,39 @@ The frontend will start at:
 
 ## ⚙️ Environment Variables
 
-### Frontend (`frontend/.env` or Vercel Environment Variables)
+### Frontend (`frontend/.env` or Netlify / Cloud Environment Variables)
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8000` | Target URL for the FastAPI backend API |
 | `VITE_API_BASE_URL` | *(optional fallback)* | Alternative prefix for API base URL |
 
-For local development:
+For local paired development:
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
-For production on Vercel:
-Set `NEXT_PUBLIC_API_BASE_URL` in the Vercel Project Settings to your deployed backend URL (e.g. `https://your-backend-api.onrender.com` or custom domain).
+> [!IMPORTANT]
+> **Why `http://localhost:8000` will NOT work on a publicly deployed frontend**:
+> In a web browser accessing a public deployment (e.g. `https://satquery-ai.netlify.app`), `localhost` resolves to the visitor's own computer, not your server. For live public operation, deploy the FastAPI backend to a cloud host (Render, Railway, Fly.io, or AWS) and configure `NEXT_PUBLIC_API_BASE_URL` with that public HTTPS URL.
 
 ---
 
-## 🌐 Deploying to Vercel
+## 🌐 Deploying to Netlify (Free Tier)
 
-The repository is preconfigured for zero-friction Vercel deployment:
+The repository is configured for zero-configuration Netlify deployment with full SPA routing (`_redirects` and `netlify.toml`):
 
-1. **Connect GitHub Repository**: Import `https://github.com/rishabparande15-lab/Satquery_ai` into Vercel.
-2. **Build Settings**:
-   - **Framework Preset**: Vite
-   - **Root Directory**: `frontend` (or leave as root; root `vercel.json` and `package.json` proxy the build)
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-3. **Environment Variables**:
-   - Add `NEXT_PUBLIC_API_BASE_URL` pointing to your production backend.
+### Option A: If repository root is used
+- **Build command**: `npm run build`
+- **Publish directory**: `frontend/dist`
+
+### Option B: If `frontend` is used as base directory
+- **Base directory**: `frontend`
+- **Build command**: `npm run build`
+- **Publish directory**: `dist`
+
+### Environment Variables on Netlify:
+- Go to **Site Configuration** > **Environment Variables**
+- Key: `NEXT_PUBLIC_API_BASE_URL`
+- Value: Your public backend HTTPS URL (or leave blank to use the Simulated Mode until the backend is hosted).
+

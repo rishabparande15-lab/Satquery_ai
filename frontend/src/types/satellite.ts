@@ -154,7 +154,7 @@ export interface SearchFilterParams {
 }
 
 export interface BackendHealth {
-  status: 'connected' | 'simulated_fallback';
+  status: 'connected' | 'simulated_fallback' | 'offline' | 'error';
   service: string;
   version?: string;
   activeMode?: string;
