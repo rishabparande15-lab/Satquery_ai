@@ -17,7 +17,9 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Log startup summary so Render deploy logs confirm the app is live."""
-    routes = [r.path for r in app.routes]  # type: ignore[attr-defined]
+    # Use getattr so _IncludedRouter objects (no .path) are safely skipped
+    routes = [getattr(r, "path", None) for r in app.routes]
+    routes = [p for p in routes if p is not None]
     logger.info(
         "SatQuery AI API v%s started | environment=%s | routes=%s",
         settings.version,
