@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
-from .api import health_router, search_router, scenes_router, analysis_router
+from .api import health_router, search_router, scenes_router, analysis_router, validation_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,6 +59,7 @@ app.include_router(health_router)
 app.include_router(search_router)
 app.include_router(scenes_router)
 app.include_router(analysis_router)
+app.include_router(validation_router)
 
 
 @app.get("/")

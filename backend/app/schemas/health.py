@@ -15,6 +15,8 @@ class HealthResponse(BaseModel):
             "sentinel-2-l2a-search",
             "bounded-window-ndvi",
             "remote-cog-streaming",
+            "input-geospatial-validation",
+            "pair-compatibility-check",
         ],
         description="Supported geospatial capabilities",
     )

@@ -10,6 +10,7 @@ import { QueryBar } from '../query/QueryBar';
 import { SearchResultsPanel } from '../results/SearchResultsPanel';
 import { MapWorkspace } from '../map/MapWorkspace';
 import { SatelliteMetadataPanel } from '../results/SatelliteMetadataPanel';
+import { ValidationPanel } from '../results/ValidationPanel';
 import { AnalysisStatusPanel } from '../analysis/AnalysisStatusPanel';
 import { ResultSummaryCard } from '../analysis/ResultSummaryCard';
 
@@ -54,7 +55,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSaveAnalysis,
   isCurrentResultSaved,
 }) => {
-  const [rightPanelTab, setRightPanelTab] = useState<'analysis' | 'metadata'>('analysis');
+  const [rightPanelTab, setRightPanelTab] = useState<'analysis' | 'validation' | 'metadata'>('analysis');
 
   return (
     <div className="dashboard-layout">
@@ -88,8 +89,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         isAnalyzing={isAnalyzing}
       />
 
-      {/* Right Panel: Analysis Telemetry & STAC Metadata */}
-      <section className="panel-right" aria-label="Analysis Telemetry and Metadata">
+      {/* Right Panel: Analysis Telemetry, Validation & STAC Metadata */}
+      <section className="panel-right" aria-label="Analysis Telemetry, Validation and Metadata">
         <div className="tab-row" role="tablist">
           <button
             className={`tab-btn ${rightPanelTab === 'analysis' ? 'active' : ''}`}
@@ -103,16 +104,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </button>
           <button
+            className={`tab-btn ${rightPanelTab === 'validation' ? 'active' : ''}`}
+            onClick={() => setRightPanelTab('validation')}
+            role="tab"
+            aria-selected={rightPanelTab === 'validation'}
+          >
+            Validation
+          </button>
+          <button
             className={`tab-btn ${rightPanelTab === 'metadata' ? 'active' : ''}`}
             onClick={() => setRightPanelTab('metadata')}
             role="tab"
             aria-selected={rightPanelTab === 'metadata'}
           >
-            STAC Metadata & Bands
+            STAC Metadata
           </button>
         </div>
 
-        {rightPanelTab === 'analysis' ? (
+        {rightPanelTab === 'analysis' && (
           <div className="panel-content">
             <AnalysisStatusPanel job={analysisJob} />
             <ResultSummaryCard
@@ -122,7 +131,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               isSaved={isCurrentResultSaved}
             />
           </div>
-        ) : (
+        )}
+
+        {rightPanelTab === 'validation' && (
+          <ValidationPanel scene={selectedScene} />
+        )}
+
+        {rightPanelTab === 'metadata' && (
           <SatelliteMetadataPanel scene={selectedScene} />
         )}
       </section>

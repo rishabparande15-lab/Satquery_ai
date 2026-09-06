@@ -21,6 +21,8 @@ def get_health() -> HealthResponse:
             "sentinel-2-l2a-search",
             "bounded-window-ndvi",
             "remote-cog-streaming",
+            "input-geospatial-validation",
+            "pair-compatibility-check",
         ],
         timestamp=datetime.now(timezone.utc).isoformat(),
     )

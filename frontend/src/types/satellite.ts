@@ -166,3 +166,61 @@ export interface BackendHealth {
 }
 
 export type ActiveNavTab = 'dashboard' | 'history' | 'saved' | 'settings';
+
+export type ValidationStatus = 'passed' | 'warning' | 'failed';
+
+export interface ValidationCheck {
+  id: string;
+  label: string;
+  status: ValidationStatus;
+  message: string;
+  details?: Record<string, any>;
+}
+
+export interface GeospatialMetadata {
+  crs?: string | null;
+  epsg?: number | null;
+  is_projected?: boolean | null;
+  bounds?: [number, number, number, number] | null;
+  dimensions?: { width: number; height: number } | null;
+  band_count?: number | null;
+  spatial_resolution_meters?: number | null;
+  acquisition_date?: string | null;
+  nodata_value?: number | string | null;
+  declared_format?: string | null;
+}
+
+export interface ImageQualityReport {
+  cloud_cover_percent?: number | null;
+  valid_pixel_ratio?: number | null;
+  quality_assessment: string;
+  details?: Record<string, any>;
+}
+
+export interface InputValidationResponse {
+  scene_id: string;
+  overall_status: ValidationStatus;
+  modality: string;
+  ndvi_ready: boolean;
+  metadata: GeospatialMetadata;
+  quality: ImageQualityReport;
+  checks: ValidationCheck[];
+  warnings: string[];
+  limitations: string[];
+  validated_at: string;
+}
+
+export interface ScenePairValidationResponse {
+  before_scene_id: string;
+  after_scene_id: string;
+  overall_status: ValidationStatus;
+  temporal_order_valid?: boolean | null;
+  overlap_percent_estimate?: number | null;
+  crs_compatible: boolean;
+  resolution_compatible?: boolean | null;
+  coregistration_assessment: string;
+  checks: ValidationCheck[];
+  warnings: string[];
+  limitations: string[];
+  validated_at: string;
+}

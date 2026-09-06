@@ -7,6 +7,8 @@ import {
   QueryHistoryItem,
   SavedAnalysis,
   BackendHealth,
+  InputValidationResponse,
+  ScenePairValidationResponse,
 } from '../types/satellite';
 import {
   MOCK_SCENES,
@@ -321,6 +323,91 @@ class SatelliteApiClient {
       console.error(`[SatQuery API] getSceneById failed for ${sceneId}:`, err);
       throw err;
     }
+  }
+
+  /**
+   * Run comprehensive Phase 2 Input & Geospatial Validation for a selected scene.
+   */
+  async validateScene(sceneId: string): Promise<InputValidationResponse> {
+    if (this.mode === 'simulated') {
+      return {
+        scene_id: sceneId,
+        overall_status: 'passed',
+        modality: 'multispectral optical',
+        ndvi_ready: true,
+        metadata: {
+          crs: 'EPSG:32631',
+          epsg: 32631,
+          is_projected: true,
+          bounds: [2.0, 48.0, 3.0, 49.0],
+          dimensions: { width: 10980, height: 10980 },
+          band_count: 12,
+          spatial_resolution_meters: 10,
+          acquisition_date: new Date().toISOString(),
+          nodata_value: 0,
+          declared_format: 'Cloud-Optimized GeoTIFF (COG)',
+        },
+        quality: {
+          cloud_cover_percent: 5.0,
+          valid_pixel_ratio: 0.98,
+          quality_assessment: 'nominal',
+        },
+        checks: [
+          { id: 'modality', label: 'Sensor Modality', status: 'passed', message: 'Multispectral optical input (simulated).' },
+          { id: 'bands', label: 'Required Spectral Bands', status: 'passed', message: 'Red and NIR bands present.' },
+          { id: 'format', label: 'Raster File Format', status: 'passed', message: 'Cloud-Optimized GeoTIFF (COG).' },
+          { id: 'bounds', label: 'Geographic Bounding Box', status: 'passed', message: 'WGS84 bounds verified.' },
+          { id: 'crs', label: 'Coordinate Reference System', status: 'passed', message: 'EPSG:32631 UTM zone.' },
+          { id: 'quality', label: 'Image Quality & Atmosphere', status: 'passed', message: 'Nominal cloud cover (5.0%).' },
+        ],
+        warnings: [],
+        limitations: ['Simulated validation mode active.'],
+        validated_at: new Date().toISOString(),
+      };
+    }
+
+    try {
+      const response = await apiFetch(`/api/scenes/${encodeURIComponent(sceneId)}/validation`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const detailMsg =
+          errData?.detail?.message ||
+          (typeof errData?.detail === 'string' ? errData.detail : null);
+        throw new Error(detailMsg || `Validation failed for scene ${sceneId} (HTTP ${response.status})`);
+      }
+
+      return await response.json();
+    } catch (err: unknown) {
+      console.error(`[SatQuery API] validateScene failed for ${sceneId}:`, err);
+      throw err;
+    }
+  }
+
+  /**
+   * Validate geospatial compatibility between two satellite scenes (image pair).
+   */
+  async validateScenePair(beforeSceneId: string, afterSceneId: string): Promise<ScenePairValidationResponse> {
+    const response = await apiFetch('/api/validation/pairs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        before_scene_id: beforeSceneId,
+        after_scene_id: afterSceneId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      const detailMsg =
+        errData?.detail?.message ||
+        (typeof errData?.detail === 'string' ? errData.detail : null);
+      throw new Error(detailMsg || `Scene pair validation failed (HTTP ${response.status})`);
+    }
+
+    return await response.json();
   }
 
   /**

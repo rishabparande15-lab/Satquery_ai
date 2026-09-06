@@ -3,6 +3,7 @@ import time
 from datetime import datetime, timezone
 from ..providers.stac_provider import stac_provider
 from ..processing.ndvi import compute_bounded_ndvi, RasterProcessingError
+from ..services.validation_service import validation_service, RED_ALIASES, NIR_ALIASES, _find_asset_key
 from ..schemas.analysis import (
     NDVIAnalysisRequest,
     NDVIAnalysisResponse,
@@ -32,32 +33,33 @@ class AnalysisService:
                 status_code=404,
             )
 
+        # 2. Pre-Analysis Geospatial & Modality Validation Guard
+        validation_report = validation_service.validate_item(stac_item)
+        if not validation_report.ndvi_ready:
+            failed_checks = [c.message for c in validation_report.checks if c.status == "failed"]
+            reason = "; ".join(failed_checks) if failed_checks else f"Unsupported modality '{validation_report.modality}' for optical NDVI analysis."
+            raise RasterProcessingError(
+                f"Input validation failed for scene '{scene_id}': {reason}",
+                status_code=422,
+            )
+
         assets = stac_item.get("assets", {})
 
-        # 2. Locate Red (B04) and NIR (B08) COG asset URLs
-        red_href = None
-        nir_href = None
-
-        # Earth Search uses 'red' / 'nir' or band keys
-        if "red" in assets:
-            red_href = assets["red"].get("href")
-        elif "B04" in assets:
-            red_href = assets["B04"].get("href")
-
-        if "nir" in assets:
-            nir_href = assets["nir"].get("href")
-        elif "B08" in assets:
-            nir_href = assets["B08"].get("href")
+        # 3. Locate Red (B04/red) and NIR (B08/nir) COG asset URLs using alias resolution
+        red_key = _find_asset_key(assets, RED_ALIASES)
+        nir_key = _find_asset_key(assets, NIR_ALIASES)
+        red_href = assets[red_key].get("href") if red_key else None
+        nir_href = assets[nir_key].get("href") if nir_key else None
 
         if not red_href or not nir_href:
             available_keys = list(assets.keys())
             raise RasterProcessingError(
                 f"Scene '{scene_id}' is missing required spectral bands for NDVI. "
-                f"Requires Red (B04) and NIR (B08). Available assets: {available_keys}",
+                f"Requires Red (B04/red) and NIR (B08/nir). Available assets: {available_keys}",
                 status_code=422,
             )
 
-        # 3. Execute bounded window NDVI calculation via Rasterio
+        # 4. Execute bounded window NDVI calculation via Rasterio
         window_size = min(request.window_pixels, self.settings.max_analysis_window_pixels)
         stats = compute_bounded_ndvi(
             red_asset_url=red_href,
