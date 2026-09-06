@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: satquery-backend-xgja
+    name: satquery-backend-zrt6
     runtime: docker
     dockerfilePath: ./Dockerfile
     region: oregon

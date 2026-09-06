@@ -5,10 +5,9 @@
   publish = "dist"
 
 [build.environment]
-  NEXT_PUBLIC_API_BASE_URL = "https://satquery-backend-xgja.onrender.com"
+  NEXT_PUBLIC_API_BASE_URL = "https://satquery-backend-zrt6.onrender.com"
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-

@@ -82,7 +82,7 @@ export const SceneCard: React.FC<SceneCardProps> = ({
             onAnalyze(scene);
           }}
           disabled={isAnalyzing}
-          title="Run simulated scientific index pipeline on this granule"
+          title="Run NDVI processing on this Sentinel-2 scene"
         >
           {isAnalyzing && isSelected ? 'Analyzing...' : 'Analyze'}
         </button>

@@ -10,7 +10,7 @@ export const AnalysisStatusPanel: React.FC<AnalysisStatusPanelProps> = ({ job })
     return (
       <div className="analysis-panel">
         <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '16px' }}>
-          No active pipeline job. Click <strong>"Run AI Analysis"</strong> on any scene to initiate simulated Earth observation inference.
+          No active pipeline job. Click <strong>"Run AI Analysis"</strong> on a live Sentinel-2 scene to calculate NDVI from its source assets.
         </div>
       </div>
     );
@@ -20,7 +20,7 @@ export const AnalysisStatusPanel: React.FC<AnalysisStatusPanelProps> = ({ job })
     <div className="analysis-panel" aria-label="Analysis Pipeline Telemetry">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span className="panel-title" style={{ fontSize: '11px' }}>
-          Simulated Pipeline Telemetry
+          Earth Observation Pipeline Telemetry
         </span>
         <span className="environment-badge" style={{ fontSize: '10px' }}>
           {job.status.toUpperCase()} ({job.progressPercent}%)
@@ -85,7 +85,7 @@ export const AnalysisStatusPanel: React.FC<AnalysisStatusPanelProps> = ({ job })
         {job.status === 'processing' && <div>&gt; Awaiting stage callback...</div>}
         {job.status === 'completed' && (
           <div style={{ color: 'var(--accent-emerald)' }}>
-            &gt; Pipeline complete. Synthesis ready.
+            &gt; Pipeline complete. Computed result ready.
           </div>
         )}
       </div>

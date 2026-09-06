@@ -129,10 +129,6 @@ export const SatelliteMetadataPanel: React.FC<SatelliteMetadataPanelProps> = ({ 
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}
-          onClick={(e) => {
-            e.preventDefault();
-            alert(`Simulated STAC Item reference:\n${scene.stacSelfHref}`);
-          }}
         >
           {scene.stacSelfHref}
         </a>

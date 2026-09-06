@@ -87,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {!isCollapsed && (
         <div className="sidebar-footer">
           <div>SatQuery Core v0.1.0</div>
-          <div style={{ color: 'var(--accent-cyan)' }}>Simulated STAC v1.0</div>
+          <div style={{ color: 'var(--accent-cyan)' }}>Live STAC + NDVI</div>
         </div>
       )}
     </aside>

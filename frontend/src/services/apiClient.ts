@@ -18,14 +18,14 @@ import {
 const HISTORY_STORAGE_KEY = 'satquery_query_history_v1';
 const SAVED_STORAGE_KEY = 'satquery_saved_analyses_v1';
 
-export const PRODUCTION_API_URL = 'https://satquery-backend-xgja.onrender.com';
+export const PRODUCTION_API_URL = 'https://satquery-backend-zrt6.onrender.com';
 export const LOCAL_API_URL = 'http://localhost:8000';
 
 /**
  * Resolves the backend base URL with strict production protection:
  * 1. Checks NEXT_PUBLIC_API_BASE_URL or VITE_API_BASE_URL.
  * 2. If running in production or loaded on any remote host (e.g. Netlify), NEVER allows localhost:8000.
- * 3. Defaults to https://satquery-backend-xgja.onrender.com in production.
+ * 3. Defaults to the deployed Render service in production.
  */
 function resolveApiBaseUrl(): string {
   const envUrl =
